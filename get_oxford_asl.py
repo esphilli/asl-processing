@@ -120,7 +120,7 @@ def get_oxford_asl(study):
 					filename = a
 					break
 		iaf = 'tc'
-		slicedt = input('enter estimate for slice timing: ')
+		# parameters not available for Philips, use config file w/ protocol
 		# get parameters from user when they are not present
 		# get fieldmaps if they are present and add to oxford_asl_call
 	# outputs call to oxford_asl

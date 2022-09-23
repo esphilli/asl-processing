@@ -13,27 +13,7 @@ import nibabel as nib
 # reads metadata (& DICOM headers?) for ASL image in study
 # then auto-populates parameters for oxford_asl call
 
-'''def prep_data(study):
-	# load data
-	assert os.path.isdir(study)
-	os.chdir(study)
-	jsons = glob.glob('*.json')
-	anat = glob.glob('*.anat')[0]
-	asls = []
-	mocos = []
-	for j in jsons:
-		if 'PASL' in j or '_real' in j:
-			asls.append(j)
-			if '_MoCo_' in j:
-				mocos.append(j)
-	# assign data as temp to get manufacturer info		
-	data = json.load(open(asls[0]))	
-	return'''
-
-# runs fsl_anat to process T1 image
-'''def run_anat(study):
-	os.system('fsl_anat -i ' + t1_img)
-	return'''
+# run fsl_anat to process T1 image
 
 def get_oxford_asl(study):
 	# load data
@@ -132,13 +112,13 @@ def get_oxford_asl(study):
 		# Philips is always 2D PASL
 		if 'ORIGINAL' in data['ImageType']:
 				filename = asls[0]
-			else:
-				for a in asls:
-					d = json.load(open(a))
-					if 'ORIGINAL' in d['ImageType']:
-						data = d
-						filename = a
-						break
+		else:
+			for a in asls:
+				d = json.load(open(a))
+				if 'ORIGINAL' in d['ImageType']:
+					data = d
+					filename = a
+					break
 		iaf = 'tc'
 		slicedt = input('enter estimate for slice timing: ')
 		# get parameters from user when they are not present
@@ -178,10 +158,7 @@ def get_fieldmap(fieldmaps):
 	print('prepared fieldmap for use with oxford_asl')
 	return calculated_fieldmap, echospacing, pedir
 
-# runs oxford_asl from the command line
-'''def run_asl(oxford_asl_call):
-	os.system(oxford_asl_call)
-	return'''
+# run oxford_asl from the command line
 
 if __name__=='__main__':
 	get_oxford_asl(sys.argv[1])

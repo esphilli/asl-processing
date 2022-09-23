@@ -1,4 +1,5 @@
 import os 
+import subprocess
 import sys
 import glob
 import json
@@ -12,32 +13,65 @@ import nibabel as nib
 # reads metadata (& DICOM headers?) for ASL image in study
 # then auto-populates parameters for oxford_asl call
 
-def get_oxford_asl(study):
-	
+'''def prep_data(study):
 	# load data
 	assert os.path.isdir(study)
 	os.chdir(study)
 	jsons = glob.glob('*.json')
 	anat = glob.glob('*.anat')[0]
 	asls = []
+	mocos = []
 	for j in jsons:
 		if 'PASL' in j or '_real' in j:
 			asls.append(j)
+			if '_MoCo_' in j:
+				mocos.append(j)
+	# assign data as temp to get manufacturer info		
+	data = json.load(open(asls[0]))	
+	return'''
+
+# runs fsl_anat to process T1 image
+'''def run_anat(study):
+	os.system('fsl_anat -i ' + t1_img)
+	return'''
+
+def get_oxford_asl(study):
+	# load data
+	assert os.path.isdir(study)
+	os.chdir(study)
+	jsons = glob.glob('*.json')
+	anat = glob.glob('*.anat')[0]
+	asls = []
+	mocos = []
+	for j in jsons:
+		if 'PASL' in j or '_real' in j:
+			asls.append(j)
+			# applies to Siemens acquisition only
+			if '_MoCo_' in j:
+				mocos.append(j)
 	# assign data as temp to get manufacturer info		
 	data = json.load(open(asls[0]))		
-
 	# parse metadata to get parameters
 	if data['Manufacturer'] == 'Siemens':
+		# Siemens is always PASL
 		# make sure data is original ASL image
-		if 'ORIGINAL' in data['ImageType']:
-			filename = asls[0]
+		if len(mocos) == 0:
+			if 'ORIGINAL' in data['ImageType']:
+				filename = asls[0]
+			else:
+				for a in asls:
+					d = json.load(open(a))
+					if 'ORIGINAL' in d['ImageType']:
+						data = d
+						filename = a
+						break
 		else:
-			for a in asls:
-				d = json.load(open(a))
-				if 'ORIGINAL' in d['ImageType']:
+			for m in mocos:
+				d = json.load(open(m))
+				if d['SeriesDescription'] != 'Perfusion_Weighted' and d['SeriesDescription'] != 'relCBF':
 					data = d
-					filename = a
-					break
+					filename = m
+					break			
 		iaf = 'ct' 
 		tis = str(data['InversionTime'])
 		bolus = str(data['BolusDuration'])
@@ -65,8 +99,10 @@ def get_oxford_asl(study):
 				tr = str(data['RepetitionTime'])
 				oxford_asl_call = oxford_asl_call + ' -c m0.nii --tr=' + tr 
 		elif data['MRAcquisitionType'] == '3D':
+			# oxford_asl defaults to 3D if no slice timing present
 			pass	
 	elif data['Manufacturer'] == 'GE':
+		# GE is always 3D pCASL
 		# make sure data is derived ASL image and calibration is original
 		if 'DERIVED' in data['ImageType'] and 'CBF' not in data['ImageType']:
 			filename = asls[0]
@@ -92,9 +128,21 @@ def get_oxford_asl(study):
 		if calib:
 			tr = str(calib['RepetitionTime'])
 			oxford_asl_call = oxford_asl_call + ' -c ' + calib_filename.replace('.json','.nii') + ' --tr=' + tr
-	elif data['Manufacturer'] == 'Philips' and data['MRAcquisitionType'] == '2D':
-		pass
-		#iaf = 'tc'
+	elif data['Manufacturer'] == 'Philips':
+		# Philips is always 2D PASL
+		if 'ORIGINAL' in data['ImageType']:
+				filename = asls[0]
+			else:
+				for a in asls:
+					d = json.load(open(a))
+					if 'ORIGINAL' in d['ImageType']:
+						data = d
+						filename = a
+						break
+		iaf = 'tc'
+		slicedt = input('enter estimate for slice timing: ')
+		# get parameters from user when they are not present
+		# get fieldmaps if they are present and add to oxford_asl_call
 	# outputs call to oxford_asl
 	print('oxford_asl call:')
 	print(oxford_asl_call)
@@ -129,6 +177,11 @@ def get_fieldmap(fieldmaps):
 		pedir = '-z'		
 	print('prepared fieldmap for use with oxford_asl')
 	return calculated_fieldmap, echospacing, pedir
+
+# runs oxford_asl from the command line
+'''def run_asl(oxford_asl_call):
+	os.system(oxford_asl_call)
+	return'''
 
 if __name__=='__main__':
 	get_oxford_asl(sys.argv[1])
